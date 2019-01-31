@@ -40,11 +40,12 @@ class ViewController: UIViewController {
         performDetectionRequests()
     }
 
+    /// Begin searching for faces rectangles and face landmarks.
     func performDetectionRequests() {
-        let request = faceDetectRequest
+        let requests = [faceDetectRequest, faceLandmarksDetectRequest]
         DispatchQueue.global(qos: .userInitiated).async {
             do {
-                try self.imageRequestHandler.perform([request])
+                try self.imageRequestHandler.perform(requests)
             } catch let error as NSError {
                 print("Failed to perform image request: \(error)")
                 return
@@ -52,6 +53,15 @@ class ViewController: UIViewController {
         }
     }
 
+    // MARK: Detections
+
+    /// Draw a rectangle around the detected face.
+    ///
+    /// ⚠️ Must be executed on the main thread.
+    ///
+    /// - Parameters:
+    ///   - request: A `VNDetectFaceRectanglesRequest` request.
+    ///   - error: An error, if any were thrown by the `request`.
     func handleFaceDetection(forRequest request: VNRequest, error: Error?) {
         DispatchQueue.main.async {
             guard let results = request.results as? [VNFaceObservation] else {
@@ -63,15 +73,13 @@ class ViewController: UIViewController {
 
             CATransaction.begin()
             for observation in results {
-                print("Image View Bounds: \(self.imageView.bounds)")
-                print("Observation Bounds: \(observation.boundingBox)")
-
                 let boundingBox = self.boundingBox(forRegionOfInterest: observation.boundingBox, inImageWithBounds: self.imageView.frame)
 
                 let emojiLayer = CATextLayer()
                 emojiLayer.frame = boundingBox
                 emojiLayer.fontSize = 0.9 * boundingBox.height
                 emojiLayer.alignmentMode = .center
+//                emojiLayer.string = "💩"
                 emojiLayer.borderColor = UIColor.blue.cgColor
                 emojiLayer.borderWidth = 1
 
@@ -83,6 +91,22 @@ class ViewController: UIViewController {
         }
     }
 
+    func handleFaceLandmarksDetection(forRequest request: VNRequest, error: Error?) {
+        DispatchQueue.main.async {
+
+        }
+    }
+
+    // MARK: Calculations
+
+    /// Translates a rectangle in unit coordinate space to the coordinate space of the given image's bounds.
+    ///
+    /// - Parameters:
+    ///   - roi: The "region of interest", a coordinate space with `x` and `y` values between `0.0`
+    ///
+    ///   - imageBounds:
+    /// - Returns: A rectangle that's been translated from the unit coordinate space to the
+    ///     `imageBounds` coordinate space.
     func boundingBox(forRegionOfInterest roi: CGRect, inImageWithBounds imageBounds: CGRect) -> CGRect {
         let observationHeight = roi.height * imageBounds.height
         let observationWidth = roi.width * imageBounds.width
@@ -90,12 +114,7 @@ class ViewController: UIViewController {
         let observationCoordinateY = imageBounds.height - (roi.origin.y * imageBounds.height) - observationHeight
 
         let rect = CGRect(x: observationCoordinateX, y: observationCoordinateY, width: observationWidth, height: observationHeight)
-        print("Bounding box for ROI: \(rect)")
         return rect
-    }
-
-    func handleFaceLandmarksDetection(forRequest request: VNRequest, error: Error?) {
-
     }
 }
 
