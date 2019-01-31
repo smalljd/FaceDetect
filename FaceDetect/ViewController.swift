@@ -93,8 +93,49 @@ class ViewController: UIViewController {
 
     func handleFaceLandmarksDetection(forRequest request: VNRequest, error: Error?) {
         DispatchQueue.main.async {
+            guard let results = request.results as? [VNFaceObservation] else {
+                assertionFailure("Invalid result type: \(String(describing: request.results))")
+                return
+            }
 
+            CATransaction.begin()
+            for observation in results {
+                let imageSize = self.imageView.bounds.size
+                print("Image size: \(imageSize)")
+                let landmarks = observation.landmarks?.outerLips?.pointsInImage(imageSize: imageSize) ?? []
+                print("Landmark  points: \(landmarks)")
+                let shapeLayer = CAShapeLayer()
+                shapeLayer.frame = self.imageView.frame
+                self.drawPaths(of: landmarks, onLayer: shapeLayer)
+
+                print("Draw Layer: \(self.drawLayer.bounds)")
+                self.drawLayer.addSublayer(shapeLayer)
+            }
+            CATransaction.commit()
+            self.drawLayer.setNeedsDisplay()
         }
+    }
+
+    func drawPaths(of points: [CGPoint], onLayer layer: CAShapeLayer) {
+        layer.strokeColor = UIColor.blue.cgColor
+        layer.lineWidth = 2
+        let path = CGMutablePath()
+
+        guard !points.isEmpty else {
+            return
+        }
+
+        for (index, point) in points.enumerated() {
+            guard index > 0 else {
+                path.move(to: point)
+                print("Moving to \(point)")
+                continue
+            }
+            path.addLine(to: point)
+            print("Adding line to \(point)")
+        }
+
+        layer.path = path
     }
 
     // MARK: Calculations
@@ -116,5 +157,9 @@ class ViewController: UIViewController {
         let rect = CGRect(x: observationCoordinateX, y: observationCoordinateY, width: observationWidth, height: observationHeight)
         return rect
     }
+}
+
+extension ViewController: CALayerDelegate {
+
 }
 
